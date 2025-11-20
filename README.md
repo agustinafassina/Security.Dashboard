@@ -4,6 +4,10 @@ This repository contains a security dashboard built with Plotly, Dash, and Pytho
 ### What are the steps we follow to collect information on this control panel?
 <img src="stages.png" alt="Logo del proyecto" width="750" height="400">
 
+Paquetes
+- pip install dash
+- pip install pandas
+
 
 Run project
 ```

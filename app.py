@@ -2,151 +2,131 @@ import dash
 from dash import dcc, html, Input, Output
 import pandas as pd
 from dash import dash_table
+import plotly.graph_objs as go
 
 app = dash.Dash(__name__)
 
+def report_ips():
+    df = pd.DataFrame({'IPs': ['192.168.1.1', '10.0.0.2'], 'Count': [5, 3]})
+    fig = go.Figure(data=[go.Bar(x=df['IPs'], y=df['Count'])])
+    return html.Div([
+        html.H2([
+            html.I(style={'marginRight': '10px'}),
+                'IPs Scanned'
+            ], style={'display': 'flex', 'alignItems': 'center'}
+        ),
+        dcc.Graph(figure=fig)
+    ])
+
+def report_ports():
+    df_users = pd.read_csv('scan_publicips_results.csv')
+
+    def check_open_ports(row):
+        open_ports = eval(row['OpenPorts'])
+        return 'Open' if 22 in open_ports else 'Closed'
+
+    df_users['Port22Status'] = df_users.apply(check_open_ports, axis=1)
+
+    port_status_counts = df_users['Port22Status'].value_counts()
+
+    fig = go.Figure(data=[go.Pie(labels=port_status_counts.index, values=port_status_counts.values,
+                                   marker=dict(colors=['#2ca02c', '#d62728']))])
+
+    fig.update_layout(
+        title='Port 22 Status by Public IP',
+    )
+
+    table = dash_table.DataTable(
+        data=df_users.to_dict('records'),
+        columns=[{'name': col, 'id': col} for col in df_users.columns],
+        page_size=10,
+        style_table={'overflowX': 'auto', 'textAlign': 'justify'}
+    )
+
+    return html.Div([
+        html.H3("Open Ports Report"),
+        dcc.Graph(figure=fig),
+        html.H4("Details of Public IPs"),
+        table
+    ])
+
+def report_domains():
+    return html.Div([
+        html.H3("Domains Report"),
+        html.P("Aquí iria tu contenido de dominios")
+    ])
+
+def report_users():
+    df_users = pd.read_csv('iam_users_results.csv')
+    group_counts = df_users['Groups'].value_counts().reset_index()
+    group_counts.columns = ['Group', 'Number of Users']
+    fig = go.Figure(data=[go.Bar(x=group_counts['Group'], y=group_counts['Number of Users'])])
+
+    table = dash_table.DataTable(
+        data=df_users.to_dict('records'),
+        columns=[{'name': col, 'id': col} for col in df_users.columns],
+        page_size=10,
+        style_table={'overflowX': 'auto', 'text-align': 'justify'},
+    )
+
+    return html.Div([
+        html.H3("IAM: users and permissions"),
+        dcc.Graph(figure=fig),
+        html.H4("Full Data Table"),
+        table
+    ])
+
+def report_logs():
+    return html.Div([
+        html.H3("Logs Analysis"),
+        html.P("Análisis de logs")
+    ])
+
 app.layout = html.Div([
+    html.Link(
+        rel='stylesheet',
+        href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+    ),
     html.Div([
-        html.Link(
-            rel='stylesheet',
-            href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css'
+        html.Div([
+            html.H2(
+                [
+                    html.I(className='fa-solid fa-building-lock', style={'marginRight': '10px'}),
+                    'Security Dashboard'
+                ],
+                style={'margin': '0', 'display': 'flex', 'alignItems': 'center'}
+            ),
+        ], style={'flex': 1, 'display': 'flex', 'alignItems': 'center'}
         ),
         html.Div([
-            # Top image
+            html.Span("Welcome", style={
+                'marginRight': '15px', 'fontSize': '20px', 'fontWeight': 'bold', 'alignSelf': 'center'
+            }),
             html.Img(
                 src='assets/img/agus.PNG',
                 style={
-                    'width': '150px',
-                    'margin': '10px auto',
-                    'display': 'block',
-                    'border-radius': '80px',
-                    'border': '2px solid #6A5ACD'
+                    'width': '55px',
+                    'height': '55px',
+                    'border-radius': '50%',
+                    'border': '2px solid #104E63',
+                    'verticalAlign': 'middle',
+                    'margin': '5px'
                 }
             ),
-            html.H2([
-                html.I(className='fa-brands fa-octopus-deploy', style={'marginRight': '10px'}),
-                'Agustina Fassina'
-            ], style={
-                'display': 'flex',
-                'justifyContent': 'center',
-                'alignItems': 'center',
-                'margin': '20px 0',
-                'fontFamily': 'Arial, sans-serif',
-                'color': '#fff'
-            }),
-            html.Button([
-                html.I(className='fas fa-satellite button-icon'),
-                'IPs Scanned'
-            ], id='btn-ips', className='modern-button'),
-
-            html.Button([
-                html.I(className='fas fa-wifi button-icon'),
-                'Open ports'
-            ], id='btn-ports', className='modern-button'),
-
-            html.Button([
-                html.I(className='fas fa-globe-americas button-icon'),
-                'Domains'
-            ], id='btn-domains', className='modern-button')
-        ], style={
-            'width': '18%',
-            'backgroundColor': '#483D8B',
-            'padding': '10px',
-            'display': 'flex',
-            'flexDirection': 'column',
-            'height': '90vh',
-            'fontFamily': 'Arial, sans-serif',
-        }),
-        html.Div(id='content-area')
-    ], style={
-        'display': 'flex',
-        'flexDirection': 'row',
-        'height': '90vh',
-        'fontFamily': 'Arial, sans-serif'
-    }),
-    # Footer
-    html.Footer("© 2025 By Agustina Fassina")
-], style={'display': 'flex', 'flexDirection': 'column', 'minHeight': '100vh'})
-
-@app.callback(
-    Output('content-area', 'children'),
-    [Input('btn-ips', 'n_clicks'),
-     Input('btn-ports', 'n_clicks'),
-     Input('btn-domains', 'n_clicks')]
-)
-def display_content(n_clicks_ips, n_clicks_ports, n_clicks_domains):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        return html.P("Select menu option")
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
-
-    if button_id == 'btn-ips':
-        df = pd.read_csv('scan_publicips_result copy.csv')
-
-        # 1. Ips count
-        ip_counts = df['Public_IP'].value_counts().reset_index()
-        ip_counts.columns = ['Public IP', 'Count']
-        total_ips = df['Public_IP'].nunique()
-
-        # 2. IPs with open ports and what they are
-        ips_with_port_22 = df[df['Open_Ports'].dropna().apply(lambda x: '22' in str(x).split(','))]
-        ips_with_port_22_unique = len(ips_with_port_22['Public_IP'].unique())
-
-        # 2. IPs with RDP port open (3389)
-        ips_con_rdp = df[df['Open_Ports'].dropna().apply(lambda x: '3389' in str(x).split(','))]
-        count_rdp = len(ips_con_rdp['Public_IP'].unique())
-
-        # 3. Number of open ports (histogram)
-        df['Ports_List'] = df['Open_Ports'].apply(lambda x: len(str(x).split(',')))
-
-        fig_barras = {
-            'data': [
-                {'x': ['Puerto 22', 'RDP (3389)', 'Total IPs'], 'y': [ips_with_port_22_unique, count_rdp, total_ips], 'type': 'bar'}
-            ],
-            'layout': {
-                'title': 'Comparación de IPs con puertos abiertos',
-                'yaxis': {'title': 'Cantidad'},
-                'xaxis': {'title': 'Métrica'}
-            }
-        }
-
-        # Table with Ips
-        ip_table = dash_table.DataTable(
-            data=ip_counts.to_dict('records'),
-            columns=[{'name': col, 'id': col} for col in ip_counts.columns],
-            style_header={'backgroundColor': 'rgb(230, 230, 230)', 'fontWeight': 'bold'},
-        )
-
-        total_count_html = html.Div([
-                html.H4("Results"),
-                html.P(f"Total number of unique IPs: {total_ips}"),
-                html.P(f"IPs with port 22 open: {ips_with_port_22_unique}")
-            ], style={'width': '40%', 'padding': '10px', 'border': '1px solid #ccc', 'border-radius': '8px', 'backgroundColor': '#f9f9f9'
-        })
-
-        return html.Div([
-            # Flex container
-            html.Div([
-                # Graph
-                html.Div([
-                    html.H4("Number of open ports on IPs"),
-                    dcc.Graph(figure=fig_barras, style={'height': '400px'})
-                ], style={'width': '60%', 'padding': '10px'}),
-
-                # Counter
-                total_count_html,
-            ], style={'display': 'flex', 'flexDirection': 'row'}),
-            ip_table
-        ])
-    elif button_id == 'btn-domains':
-        df = pd.read_csv('scan_publicips_result copy.csv')
-        return html.Div([
-            html.H3("Dominios"),
-            dcc.Graph(figure={
-                'data': [{'labels': df['Domain'], 'values': df['Count'], 'type': 'pie'}],
-                'layout': {'title': 'Dominios'}
-            })
-        ])
+        ], style={'display': 'flex', 'alignItems': 'center'})
+    ], style={'display': 'flex', 'justifyContent': 'space-between', 'backgroundColor': '#fff', 'padding': '0px 50px'}),
+    html.Div([
+        html.Div([
+            dcc.Tabs([
+                dcc.Tab(label=' Security Headers report ', children=report_ips(), className="custom-tab"),
+                dcc.Tab(label=' Public Ip: Open ports (1000 ports) ', children=report_ports(), className="custom-tab"),
+                dcc.Tab(label=' TLS/SSL status in the domains ', children=report_domains(), className="custom-tab"),
+                dcc.Tab(label=' IAM: users and permissions ', children=report_users(), className="custom-tab"),
+            ]),
+        ], className="bottom-area"),
+    ], className="header-area"),
+    html.Footer("© 2025 By Agustina Fassina", style={'textAlign': 'center', 'padding': '10px', 'fontFamily': 'Arial, sans-serif'})
+])
 
 if __name__ == '__main__':
     app.run(debug=True)
