@@ -50,10 +50,51 @@ def report_ports():
         table
     ])
 
-def report_domains():
+def report_headers():
+    df_headers = pd.read_csv('verified_headers_results.csv')
+
+    counts = {
+        'X-Content-Type-Options': df_headers['X-Content-Type-Options'].value_counts(),
+        'X-Frame-Options': df_headers['X-Frame-Options'].value_counts(),
+        'Content-Security-Policy': df_headers['Content-Security-Policy'].value_counts(),
+        'Hsts': df_headers['Hsts'].value_counts(),
+    }
+
+    headers_df = pd.DataFrame(counts).fillna(0).astype(int)
+
+    fig = go.Figure()
+
+    for column in headers_df.columns:
+        fig.add_trace(go.Bar(
+            x=headers_df.index,
+            y=headers_df[column],
+            name=column,
+            text=headers_df[column],
+            textposition='auto',
+            marker=dict(line=dict(width=1.5, color='black'))
+        ))
+
+    fig.update_layout(
+        title='Header Scan Results',
+        xaxis_title='Header Status',
+        yaxis_title='Count',
+        barmode='group',
+        height=400,
+        xaxis_tickangle=-45
+    )
+
+    table = dash_table.DataTable(
+        data=df_headers.to_dict('records'),
+        columns=[{'name': col, 'id': col} for col in df_headers.columns],
+        page_size=10,
+        style_table={'overflowX': 'auto', 'textAlign': 'justify'}
+    )
+
     return html.Div([
-        html.H3("Domains Report"),
-        html.P("Aquí iria tu contenido de dominios")
+        html.H3("Header Scan Report"),
+        dcc.Graph(figure=fig),
+        html.H4("Details of Domain Headers"),
+        table
     ])
 
 def report_users():
@@ -118,9 +159,9 @@ app.layout = html.Div([
     html.Div([
         html.Div([
             dcc.Tabs([
-                dcc.Tab(label=' Security Headers report ', children=report_ips(), className="custom-tab"),
+                dcc.Tab(label=' Report Ips ', children=report_ips(), className="custom-tab"),
                 dcc.Tab(label=' Public Ip: Open ports (1000 ports) ', children=report_ports(), className="custom-tab"),
-                dcc.Tab(label=' TLS/SSL status in the domains ', children=report_domains(), className="custom-tab"),
+                dcc.Tab(label=' Header Report ', children=report_headers(), className="custom-tab"),
                 dcc.Tab(label=' IAM: users and permissions ', children=report_users(), className="custom-tab"),
             ]),
         ], className="bottom-area"),
