@@ -4,6 +4,17 @@ This repository contains a security dashboard built with Plotly, Dash, and Pytho
 ### What are the steps we follow to collect information on this control panel?
 <img src="stages.png" alt="Logo del proyecto" width="750" height="400">
 
+#### Folder structure
+Security.Dashboard/
+├── .venv/ (virtual environment)
+├── app.py
+├── data/
+│   ├── scan_publicips_results.csv
+│   ├── verified_headers_results.csv
+│   └── iam_users_results.csv
+├── assets/
+├── requirements.txt
+
 ### Setup
 1. Create and activate virtual environment (recommendation) ⚙️
 ```bash
