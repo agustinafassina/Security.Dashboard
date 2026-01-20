@@ -5,15 +5,15 @@ This repository contains a security dashboard built with Plotly, Dash, and Pytho
 <img src="stages.png" alt="Logo del proyecto" width="750" height="400">
 
 #### Folder structure
-Security.Dashboard/
-├── .venv/ (virtual environment)
-├── app.py
-├── data/
-│   ├── scan_publicips_results.csv
-│   ├── verified_headers_results.csv
-│   └── iam_users_results.csv
-├── assets/
-├── requirements.txt
+Security.Dashboard/ <br>
+├── .venv/ (virtual environment) <br>
+├── app.py <br>
+├── data/ <br>
+│   ├── scan_publicips_results.csv <br>
+│   ├── verified_headers_results.csv <br>
+│   └── iam_users_results.csv <br>
+├── assets/ <br>
+├── requirements.txt <br>
 
 ### Setup
 1. Create and activate virtual environment (recommendation) ⚙️
