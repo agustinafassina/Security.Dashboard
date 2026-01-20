@@ -4,12 +4,33 @@ This repository contains a security dashboard built with Plotly, Dash, and Pytho
 ### What are the steps we follow to collect information on this control panel?
 <img src="stages.png" alt="Logo del proyecto" width="750" height="400">
 
-Paquetes
-- pip install dash
-- pip install pandas
+### Setup
+1. Create and activate virtual environment (recommendation)
+```bash
+# Create virtual environment
+python -m venv venv
 
-
-Run project
+# Active virtual environment
+venv\Scripts\activate
 ```
+
+2. Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+or by package
+```bash
+pip install dash
+pip install pandas
+pip install plotly
+```
+
+## Run project
+
+```bash
 py app.py
+
+# or
+python app.py
 ```
