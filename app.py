@@ -3,6 +3,10 @@ from dash import dcc, html, Input, Output
 import pandas as pd
 from dash import dash_table
 import plotly.graph_objs as go
+from pathlib import Path
+
+BASE_DIR = Path(__file__).parent
+DATA_DIR = BASE_DIR / 'data'
 
 app = dash.Dash(__name__)
 
@@ -19,7 +23,7 @@ def report_ips():
     ])
 
 def report_ports():
-    df_users = pd.read_csv('scan_publicips_results.csv')
+    df_users = pd.read_csv(DATA_DIR / 'scan_publicips_results.csv')
 
     def check_open_ports(row):
         open_ports = eval(row['OpenPorts'])
@@ -51,7 +55,7 @@ def report_ports():
     ])
 
 def report_headers():
-    df_headers = pd.read_csv('verified_headers_results.csv')
+    df_headers = pd.read_csv(DATA_DIR / 'verified_headers_results.csv')
 
     counts = {
         'X-Content-Type-Options': df_headers['X-Content-Type-Options'].value_counts(),
@@ -98,7 +102,7 @@ def report_headers():
     ])
 
 def report_users():
-    df_users = pd.read_csv('iam_users_results.csv')
+    df_users = pd.read_csv(DATA_DIR / 'iam_users_results.csv')
     group_counts = df_users['Groups'].value_counts().reset_index()
     group_counts.columns = ['Group', 'Number of Users']
     fig = go.Figure(data=[go.Bar(x=group_counts['Group'], y=group_counts['Number of Users'])])
@@ -170,4 +174,7 @@ app.layout = html.Div([
 ])
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    import os
+    # Compatibility with Python 3.14+
+    debug_mode = os.getenv('DEBUG', 'False').lower() == 'true'
+    app.run(debug=debug_mode, host='127.0.0.1', port=8050)

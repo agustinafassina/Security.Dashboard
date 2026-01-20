@@ -1,0 +1,17 @@
+Domain,URL,X-Content-Type-Options,X-Frame-Options,Content-Security-Policy,Hsts,Server,LastChecked
+example1.com,https://example1.com,nosniff,DENY,"default-src 'self'",Strict,nginx,2025-01-15
+example2.com,https://example2.com,nosniff,SAMEORIGIN,"default-src 'self'; script-src 'self'",Strict,Apache,2025-01-15
+example3.com,https://example3.com,Missing,Missing,Missing,Missing,nginx,2025-01-15
+example4.com,https://example4.com,nosniff,DENY,"default-src 'self'",Strict,Cloudflare,2025-01-15
+example5.com,https://example5.com,nosniff,SAMEORIGIN,"default-src *",Missing,nginx,2025-01-15
+example6.com,https://example6.com,Missing,DENY,"default-src 'self'",Strict,Apache,2025-01-15
+example7.com,https://example7.com,nosniff,Missing,Missing,Strict,nginx,2025-01-15
+example8.com,https://example8.com,nosniff,SAMEORIGIN,"default-src 'self'; script-src 'self' 'unsafe-inline'",Strict,Cloudflare,2025-01-15
+example9.com,https://example9.com,Missing,Missing,Missing,Missing,nginx,2025-01-15
+example10.com,https://example10.com,nosniff,DENY,"default-src 'self'",Strict,Apache,2025-01-15
+example11.com,https://example11.com,nosniff,SAMEORIGIN,"default-src 'self'",Missing,nginx,2025-01-15
+example12.com,https://example12.com,Missing,DENY,Missing,Strict,Cloudflare,2025-01-15
+example13.com,https://example13.com,nosniff,Missing,"default-src *",Missing,nginx,2025-01-15
+example14.com,https://example14.com,nosniff,SAMEORIGIN,"default-src 'self'; script-src 'self'",Strict,Apache,2025-01-15
+example15.com,https://example15.com,Missing,Missing,Missing,Missing,nginx,2025-01-15
+

@@ -1,0 +1,17 @@
+Public_IP,Domain,OpenPorts,Region,Status
+203.0.113.1,example1.com,"[22, 80, 443]",us-east-1,Active
+198.51.100.2,example2.com,"[80, 443, 8080]",us-west-2,Active
+192.0.2.3,example3.com,"[22, 80, 443, 3306]",eu-west-1,Active
+203.0.113.4,example4.com,"[80, 443]",us-east-1,Active
+198.51.100.5,example5.com,"[22, 80, 443, 3389]",us-west-1,Active
+192.0.2.6,example6.com,"[443]",eu-central-1,Active
+203.0.113.7,example7.com,"[22, 80, 443, 5432]",ap-southeast-1,Active
+198.51.100.8,example8.com,"[80, 443, 8080, 8443]",us-east-2,Active
+192.0.2.9,example9.com,"[22, 443]",eu-west-2,Active
+203.0.113.10,example10.com,"[80, 443, 3306]",ap-northeast-1,Active
+198.51.100.11,example11.com,"[443]",us-west-2,Active
+192.0.2.12,example12.com,"[22, 80, 443, 3389, 5985]",us-east-1,Active
+203.0.113.13,example13.com,"[80, 443]",eu-west-1,Active
+198.51.100.14,example14.com,"[22, 443, 5432]",ap-southeast-2,Active
+192.0.2.15,example15.com,"[80, 443, 8080]",us-west-1,Active
+

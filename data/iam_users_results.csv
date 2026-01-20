@@ -1,0 +1,17 @@
+UserName,UserID,Groups,AccessKeyCount,MFAEnabled,LastActivity,Status
+john.doe,AKIAIOSFODNN7EXAMPLE,Administrators,2,Yes,2025-01-10,Active
+jane.smith,AKIAI44QH8DHBEXAMPLE,Developers,1,Yes,2025-01-12,Active
+bob.wilson,AKIAIOSFODNN7EXAMPLE,ReadOnly,0,No,2024-12-20,Active
+alice.brown,AKIAI44QH8DHBEXAMPLE,Administrators,1,Yes,2025-01-14,Active
+charlie.davis,AKIAIOSFODNN7EXAMPLE,Developers,2,No,2025-01-11,Active
+diana.miller,AKIAI44QH8DHBEXAMPLE,ReadOnly,0,Yes,2024-11-15,Active
+edward.taylor,AKIAIOSFODNN7EXAMPLE,Administrators,3,Yes,2025-01-13,Active
+fiona.anderson,AKIAI44QH8DHBEXAMPLE,Developers,1,No,2025-01-09,Active
+george.martinez,AKIAIOSFODNN7EXAMPLE,ReadOnly,0,No,2024-10-05,Active
+helen.thompson,AKIAI44QH8DHBEXAMPLE,Administrators,2,Yes,2025-01-15,Active
+ivan.garcia,AKIAIOSFODNN7EXAMPLE,Developers,1,Yes,2025-01-08,Active
+julia.rodriguez,AKIAI44QH8DHBEXAMPLE,ReadOnly,0,No,2024-09-12,Inactive
+kevin.lee,AKIAIOSFODNN7EXAMPLE,Administrators,1,Yes,2025-01-14,Active
+lisa.walker,AKIAI44QH8DHBEXAMPLE,Developers,2,No,2025-01-12,Active
+michael.hall,AKIAIOSFODNN7EXAMPLE,ReadOnly,0,Yes,2024-08-20,Active
+
