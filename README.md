@@ -8,7 +8,7 @@ This repository contains a security dashboard built with Plotly, Dash, and Pytho
 Security.Dashboard/ <br>
 ├── .venv/ (virtual environment) <br>
 ├── app.py <br>
-├── data/ <br>
+├── data/ (csv examples) <br>
 │   ├── scan_publicips_results.csv <br>
 │   ├── verified_headers_results.csv <br>
 │   └── iam_users_results.csv <br>
