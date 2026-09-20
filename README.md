@@ -38,7 +38,6 @@ pip install plotly
 ```
 
 ## Run project 🚀
-
 ```bash
 py app.py
 
@@ -46,5 +45,5 @@ py app.py
 python app.py
 ```
 
-## License
+## License 
 By Agustina Fassina
