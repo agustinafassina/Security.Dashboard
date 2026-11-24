@@ -5,6 +5,8 @@ from dash import dash_table
 import plotly.graph_objs as go
 from pathlib import Path
 from typing import Optional, List, Dict, Any
+from datetime import date
+import functools
 import os
 import logging
 import ast
@@ -73,7 +75,8 @@ class DataCache:
                 self._file_times[filepath_str] = current_time
                 logger.info(f"Successfully cached {filepath_str}")
             
-            return self._cache[filepath_str]
+            # Return a copy so callers can add columns without mutating the cache
+            return self._cache[filepath_str].copy()
         
         except pd.errors.EmptyDataError:
             logger.error(f"Empty CSV file: {filepath_str}")
@@ -371,12 +374,13 @@ def create_grouped_bar_chart(
     x_label: str = "",
     y_label: str = "",
     height: int = 300,
-    x_tickangle: int = 0
+    x_tickangle: int = 0,
+    colors: Optional[List[str]] = None
 ) -> go.Figure:
     """Creates a grouped bar chart with consistent style."""
     fig = go.Figure()
-    
-    color_palette = [COLORS['primary'], COLORS['success'], COLORS['warning'], COLORS['danger']]
+
+    color_palette = colors or [COLORS['primary'], COLORS['success'], COLORS['warning'], COLORS['danger']]
     
     for idx, (column, series) in enumerate(data.items()):
         fig.add_trace(go.Bar(
@@ -537,175 +541,191 @@ def safe_parse_ports(ports_str: str) -> List[int]:
 # REPORT FUNCTIONS
 # ============================================================================
 
+# Ports that should rarely be exposed to the internet (port -> service)
+RISKY_PORTS = {
+    21: 'FTP',
+    22: 'SSH',
+    23: 'Telnet',
+    3306: 'MySQL',
+    3389: 'RDP',
+    5432: 'PostgreSQL',
+    5985: 'WinRM',
+}
+
+SECURITY_HEADERS = [
+    'X-Content-Type-Options',
+    'X-Frame-Options',
+    'Content-Security-Policy',
+    'Hsts',
+]
+
+
+def report_section(title: str, icon_class: str):
+    """
+    Decorator that renders a consistent error message if a report fails,
+    instead of breaking the whole dashboard.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except (FileNotFoundError, ValueError) as e:
+                logger.error(f"Error in {func.__name__}: {e}", exc_info=True)
+                return create_error_message(
+                    title, f"Failed to load or process data: {e}", icon_class
+                )
+            except Exception as e:
+                logger.error(f"Unexpected error in {func.__name__}: {e}", exc_info=True)
+                return create_error_message(
+                    title, f"An unexpected error occurred: {e}", icon_class
+                )
+        return wrapper
+    return decorator
+
+
+def is_header_missing(value: Any) -> bool:
+    """Returns True if a header value means the header is not set."""
+    if pd.isna(value):
+        return True
+    return str(value).strip().lower() in ('', 'missing', 'none', 'nan')
+
+
+@report_section('IPs Scanned', 'fa-solid fa-network-wired')
 def report_ips():
-    """Scanned IPs report."""
-    df = pd.DataFrame({'IPs': ['192.168.1.1', '10.0.0.2'], 'Count': [5, 3]})
+    """Scanned IPs report: number of open ports per public IP."""
+    df = load_and_validate_data(
+        DATA_DIR / 'scan_publicips_results.csv',
+        ['Public_IP', 'OpenPorts']
+    )
+    df['OpenPortsCount'] = df['OpenPorts'].apply(lambda p: len(safe_parse_ports(p)))
+    df = df.sort_values('OpenPortsCount', ascending=False)
+
     fig = create_bar_chart(
-        x_data=df['IPs'].tolist(),
-        y_data=df['Count'].tolist(),
-        title='IPs Scanned',
-        y_label='Count',
+        x_data=df['Public_IP'].tolist(),
+        y_data=df['OpenPortsCount'].tolist(),
+        title=f'Open Ports per Public IP ({len(df)} IPs scanned)',
+        x_label='Public IP',
+        y_label='Open ports',
         show_text=True
     )
-    
+
     return html.Div([
         create_section_header('IPs Scanned', 'fa-solid fa-network-wired'),
         create_graph_container(fig)
     ], style=COMMON_STYLES['content_container'])
 
+
+@report_section('Open Ports Report', 'fa-solid fa-door-open')
 def report_ports():
-    """Open ports report."""
-    try:
-        required_columns = ['OpenPorts', 'Public_IP']
-        df_users = load_and_validate_data(
-            DATA_DIR / 'scan_publicips_results.csv',
-            required_columns
+    """Open ports report: exposure of risky ports across public IPs."""
+    df = load_and_validate_data(
+        DATA_DIR / 'scan_publicips_results.csv',
+        ['OpenPorts', 'Public_IP']
+    )
+
+    parsed_ports = df['OpenPorts'].apply(safe_parse_ports)
+    df['RiskyPorts'] = parsed_ports.apply(
+        lambda ports: ', '.join(
+            f'{p} ({RISKY_PORTS[p]})' for p in ports if p in RISKY_PORTS
         )
+    )
 
-        def check_open_ports(row):
-            """Safely parses OpenPorts and checks if port 22 is open."""
-            open_ports = safe_parse_ports(row['OpenPorts'])
-            return 'Open' if 22 in open_ports else 'Closed'
+    exposed = (df['RiskyPorts'] != '').sum()
+    pie = create_pie_chart(
+        labels=['Exposes risky ports', 'No risky ports'],
+        values=[int(exposed), int(len(df) - exposed)],
+        title='Public IPs Exposing Risky Ports',
+        colors=[COLORS['danger'], COLORS['success']]
+    )
 
-        df_users['Port22Status'] = df_users.apply(check_open_ports, axis=1)
-        port_status_counts = df_users['Port22Status'].value_counts()
+    port_counts = {
+        f'{port} ({service})': int(parsed_ports.apply(lambda ports, p=port: p in ports).sum())
+        for port, service in RISKY_PORTS.items()
+    }
+    bar = create_bar_chart(
+        x_data=list(port_counts.keys()),
+        y_data=list(port_counts.values()),
+        title='Public IPs per Risky Port',
+        x_label='Port',
+        y_label='Public IPs',
+        color=COLORS['danger'],
+        show_text=True
+    )
 
-        fig = create_pie_chart(
-            labels=port_status_counts.index.tolist(),
-            values=port_status_counts.values.tolist(),
-            title='Port 22 Status by Public IP',
-            colors=[COLORS['success'], COLORS['danger']]
-        )
+    return html.Div([
+        create_section_header('Open Ports Report', 'fa-solid fa-door-open'),
+        create_graph_container(pie),
+        create_graph_container(bar),
+        create_subsection_header('Details of Public IPs'),
+        create_data_table(df)
+    ], style=COMMON_STYLES['content_container'])
 
-        table = create_data_table(df_users)
 
-        return html.Div([
-            create_section_header('Open Ports Report', 'fa-solid fa-door-open'),
-            create_graph_container(fig),
-            create_subsection_header('Details of Public IPs'),
-            table
-        ], style=COMMON_STYLES['content_container'])
-    
-    except (FileNotFoundError, ValueError) as e:
-        logger.error(f"Error in report_ports: {e}", exc_info=True)
-        return create_error_message(
-            'Open Ports Report',
-            f"Failed to load or process data: {str(e)}",
-            'fa-solid fa-door-open'
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error in report_ports: {e}", exc_info=True)
-        return create_error_message(
-            'Open Ports Report',
-            f"An unexpected error occurred: {str(e)}",
-            'fa-solid fa-door-open'
-        )
-
+@report_section('Header Scan Report', 'fa-solid fa-shield-halved')
 def report_headers():
-    """Security headers report."""
-    try:
-        required_columns = [
-            'X-Content-Type-Options',
-            'X-Frame-Options',
-            'Content-Security-Policy',
-            'Hsts'
-        ]
-        df_headers = load_and_validate_data(
-            DATA_DIR / 'verified_headers_results.csv',
-            required_columns
-        )
+    """Security headers report: present vs missing per header."""
+    df_headers = load_and_validate_data(
+        DATA_DIR / 'verified_headers_results.csv',
+        SECURITY_HEADERS
+    )
 
-        counts = {
-            'X-Content-Type-Options': df_headers['X-Content-Type-Options'].value_counts(),
-            'X-Frame-Options': df_headers['X-Frame-Options'].value_counts(),
-            'Content-Security-Policy': df_headers['Content-Security-Policy'].value_counts(),
-            'Hsts': df_headers['Hsts'].value_counts(),
-        }
+    missing = pd.Series(
+        {h: int(df_headers[h].apply(is_header_missing).sum()) for h in SECURITY_HEADERS}
+    )
+    present = len(df_headers) - missing
 
-        headers_df = pd.DataFrame(counts).fillna(0).astype(int)
+    fig = create_grouped_bar_chart(
+        data={'Present': present, 'Missing': missing},
+        title=f'Security Headers ({len(df_headers)} domains)',
+        x_label='Header',
+        y_label='Domains',
+        colors=[COLORS['success'], COLORS['danger']]
+    )
 
-        fig = create_grouped_bar_chart(
-            data=counts,
-            title='Header Scan Results',
-            x_label='Header Status',
-            y_label='Count',
-            x_tickangle=-45
-        )
+    return html.Div([
+        create_section_header('Header Scan Report', 'fa-solid fa-shield-halved'),
+        create_graph_container(fig),
+        create_subsection_header('Details of Domain Headers'),
+        create_data_table(df_headers)
+    ], style=COMMON_STYLES['content_container'])
 
-        table = create_data_table(df_headers)
 
-        return html.Div([
-            create_section_header('Header Scan Report', 'fa-solid fa-shield-halved'),
-            create_graph_container(fig),
-            create_subsection_header('Details of Domain Headers'),
-            table
-        ], style=COMMON_STYLES['content_container'])
-    
-    except (FileNotFoundError, ValueError) as e:
-        logger.error(f"Error in report_headers: {e}", exc_info=True)
-        return create_error_message(
-            'Header Scan Report',
-            f"Failed to load or process data: {str(e)}",
-            'fa-solid fa-shield-halved'
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error in report_headers: {e}", exc_info=True)
-        return create_error_message(
-            'Header Scan Report',
-            f"An unexpected error occurred: {str(e)}",
-            'fa-solid fa-shield-halved'
-        )
-
+@report_section('IAM: Users and Permissions', 'fa-solid fa-users')
 def report_users():
     """IAM users report."""
-    try:
-        required_columns = ['Groups']
-        df_users = load_and_validate_data(
-            DATA_DIR / 'iam_users_results.csv',
-            required_columns
-        )
-        group_counts = df_users['Groups'].value_counts().reset_index()
-        group_counts.columns = ['Group', 'Number of Users']
-        
-        fig = create_bar_chart(
-            x_data=group_counts['Group'].tolist(),
-            y_data=group_counts['Number of Users'].tolist(),
-            title='Users by Group',
-            x_label='Group',
-            y_label='Number of Users',
-            show_text=True
-        )
+    df_users = load_and_validate_data(
+        DATA_DIR / 'iam_users_results.csv',
+        ['Groups']
+    )
+    group_counts = df_users['Groups'].value_counts().reset_index()
+    group_counts.columns = ['Group', 'Number of Users']
 
-        table = create_data_table(df_users)
+    fig = create_bar_chart(
+        x_data=group_counts['Group'].tolist(),
+        y_data=group_counts['Number of Users'].tolist(),
+        title='Users by Group',
+        x_label='Group',
+        y_label='Number of Users',
+        show_text=True
+    )
 
-        return html.Div([
-            create_section_header('IAM: Users and Permissions', 'fa-solid fa-users'),
-            create_graph_container(fig),
-            create_subsection_header('Full Data Table'),
-            table
-        ], style=COMMON_STYLES['content_container'])
-    
-    except (FileNotFoundError, ValueError) as e:
-        logger.error(f"Error in report_users: {e}", exc_info=True)
-        return create_error_message(
-            'IAM: Users and Permissions',
-            f"Failed to load or process data: {str(e)}",
-            'fa-solid fa-users'
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error in report_users: {e}", exc_info=True)
-        return create_error_message(
-            'IAM: Users and Permissions',
-            f"An unexpected error occurred: {str(e)}",
-            'fa-solid fa-users'
-        )
-
-def report_logs():
-    """Logs report."""
     return html.Div([
-        create_section_header('Logs Analysis', 'fa-solid fa-file-lines'),
-        html.P("Análisis de logs", style={'color': COLORS['text_light']})
+        create_section_header('IAM: Users and Permissions', 'fa-solid fa-users'),
+        create_graph_container(fig),
+        create_subsection_header('Full Data Table'),
+        create_data_table(df_users)
     ], style=COMMON_STYLES['content_container'])
+
+
+# Tab value -> (label, report function). Reports are rendered on demand, so
+# changes in the CSV files are picked up without restarting the app.
+TABS = {
+    'ips': (' Report IPs ', report_ips),
+    'ports': (' Public IP: Open ports ', report_ports),
+    'headers': (' Header Report ', report_headers),
+    'iam': (' IAM: users and permissions ', report_users),
+}
 
 # ============================================================================
 # MAIN LAYOUT
@@ -735,7 +755,7 @@ app.layout = html.Div([
                 'color': COLORS['white']
             }),
             html.Img(
-                src='assets/img/agus.PNG',
+                src=app.get_asset_url('img/agus.PNG'),
                 style={
                     'width': '55px',
                     'height': '55px',
@@ -755,34 +775,20 @@ app.layout = html.Div([
     }),
     html.Div([
         html.Div([
-            dcc.Tabs([
-                dcc.Tab(
-                    label=' Report Ips ',
-                    children=report_ips(),
-                    className="custom-tab"
-                ),
-                dcc.Tab(
-                    label=' Public Ip: Open ports (1000 ports) ',
-                    children=report_ports(),
-                    className="custom-tab"
-                ),
-                dcc.Tab(
-                    label=' Header Report ',
-                    children=report_headers(),
-                    className="custom-tab"
-                ),
-                dcc.Tab(
-                    label=' IAM: users and permissions ',
-                    children=report_users(),
-                    className="custom-tab"
-                ),
-            ], style={
-                'fontFamily': 'Arial, sans-serif'
-            }),
+            dcc.Tabs(
+                id='report-tabs',
+                value='ips',
+                children=[
+                    dcc.Tab(label=label, value=value, className="custom-tab")
+                    for value, (label, _) in TABS.items()
+                ],
+                style={'fontFamily': 'Arial, sans-serif'}
+            ),
+            html.Div(id='tab-content'),
         ], className="bottom-area"),
     ], className="header-area"),
     html.Footer(
-        "© 2025 By Agustina Fassina",
+        f"© {date.today().year} By Agustina Fassina",
         style={
             'textAlign': 'center',
             'padding': '20px',
@@ -794,8 +800,14 @@ app.layout = html.Div([
     )
 ], style={'minHeight': '100vh', 'backgroundColor': COLORS['light']})
 
+
+@app.callback(Output('tab-content', 'children'), Input('report-tabs', 'value'))
+def render_tab(tab_value: str):
+    """Renders the selected report, reading the latest CSV data."""
+    _, report = TABS.get(tab_value, TABS['ips'])
+    return report()
+
+
 if __name__ == '__main__':
-    import os
-    # Compatibility with Python 3.14+
     debug_mode = os.getenv('DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, host='127.0.0.1', port=8050)
